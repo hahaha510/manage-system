@@ -10,11 +10,11 @@ const EnvConfig = {
     mockApi: " https://mock.presstime.cn/mock/67f66933678740f5d1f7e2a4/api",
   },
   test: {
-    baseApi: "/",
+    baseApi: "//test.future.com/api",
     mockApi: " https://mock.presstime.cn/mock/67f66933678740f5d1f7e2a4/api",
   },
   prod: {
-    baseApi: "/",
+    baseApi: "//future.com/api",
     mockApi: " https://mock.presstime.cn/mock/67f66933678740f5d1f7e2a4/api",
   },
 };
