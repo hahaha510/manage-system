@@ -4,9 +4,9 @@ import App from "./App.vue";
 import router from "./router";
 import ElementPlus from "element-plus";
 import "element-plus/dist/index.css";
-import axios from "axios";
-import config from "./config";
+import storage from "./utils/storage";
 import request from "./utils/request";
+import api from "./api";
 // 环境变量在import.env里
 // console.log("环境变量=>", import.meta.env);
 const app = createApp(App);
@@ -15,5 +15,7 @@ const app = createApp(App);
 // });
 // 给app添加全局变量
 app.config.globalProperties.$request = request;
+app.config.globalProperties.$storage = storage;
+app.config.globalProperties.$api = api;
 app.use(ElementPlus);
 app.use(router).mount("#app");

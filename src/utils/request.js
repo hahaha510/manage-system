@@ -53,6 +53,10 @@ function request(options) {
   if (options.method.toLowerCase() === "get") {
     options.params = options.data;
   }
+  // 如果请求的传的配置里mock是false 那么就把config里的mock改为请求里的mock
+  if (typeof options.mock !== "undefined") {
+    config.mock = options.mock;
+  }
   // 判断用哪个接口
   if (config.env === "prod") {
     service.defaults.baseURL = config.baseApi;
