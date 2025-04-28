@@ -6,7 +6,7 @@
 const env = import.meta.env.MODE || "prod";
 const EnvConfig = {
   dev: {
-    baseApi: "/",
+    baseApi: "/api",
     mockApi: " https://mock.presstime.cn/mock/67f66933678740f5d1f7e2a4/api",
   },
   test: {
@@ -20,7 +20,7 @@ const EnvConfig = {
 };
 export default {
   env,
-  mock: true,
+  mock: false,
   namespace: "manage",
   ...EnvConfig[env],
 };

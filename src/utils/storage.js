@@ -14,7 +14,7 @@ export default {
     window.localStorage.setItem(config.namespace, JSON.stringify(storage));
   },
   getItem(key) {
-    return this.getStorage[key];
+    return this.getStorage()[key];
   },
   // 得到改命名空间的对象 里面存了key和val
   getStorage() {

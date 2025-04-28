@@ -6,6 +6,7 @@ import axios from "axios";
 import config from "./../config";
 import { ElMessage } from "element-plus";
 import router from "../router";
+import storage from "./storage";
 // 定义错误提示常量
 const TOKEN_INVALID = "Token认证失败,请重新登陆";
 const NET_ERROR = "网络发生错误";
@@ -20,7 +21,9 @@ const service = axios.create({
 service.interceptors.request.use((req) => {
   // 可以对请求做一些处理 如看是否有token
   const headers = req.headers;
-  if (!headers.Authorization) headers.Authorization = "Bear jack";
+  // 每次请求在head里加上token
+  const { token } = storage.getItem("userInfo");
+  if (!headers.Authorization) headers.Authorization = "Bearer " + token;
   return req;
 });
 
@@ -30,11 +33,12 @@ service.interceptors.response.use((res) => {
   // 这样每次请求得到直接就是数据了 需要res.data
   if (code === 200) {
     return data;
-  } else if (code === 40001) {
+  } else if (code === 500001) {
     ElMessage.error(TOKEN_INVALID);
     setTimeout(() => {
-      router.push("login");
+      router.push("/login");
     }, 1500);
+
     return Promise.reject(TOKEN_INVALID);
   } else {
     ElMessage.error(msg || NET_ERROR);
@@ -53,15 +57,16 @@ function request(options) {
   if (options.method.toLowerCase() === "get") {
     options.params = options.data;
   }
+  let isMock = options.mock;
   // 如果请求的传的配置里mock是false 那么就把config里的mock改为请求里的mock
   if (typeof options.mock !== "undefined") {
-    config.mock = options.mock;
+    isMock = options.mock;
   }
   // 判断用哪个接口
   if (config.env === "prod") {
     service.defaults.baseURL = config.baseApi;
   } else {
-    service.defaults.baseURL = config.mock ? config.mockApi : config.baseApi;
+    service.defaults.baseURL = isMock ? config.mockApi : config.baseApi;
   }
   return service(options);
 }
