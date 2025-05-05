@@ -148,4 +148,28 @@ export default {
       mock: false,
     });
   },
+  leaveUpload(params) {
+    return request({
+      url: "/leave/upload",
+      method: "post",
+      data: params,
+      mock: false,
+    });
+  },
+  leaveMerge(params) {
+    return request({
+      url: "/leave/merge",
+      method: "post",
+      data: params,
+      mock: false,
+    });
+  },
+  leaveVerify(params) {
+    return request({
+      url: "/leave/verify",
+      method: "post",
+      data: params,
+      mock: false,
+    });
+  },
 };

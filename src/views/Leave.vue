@@ -72,6 +72,9 @@
         <el-form-item label="休假原因" prop="reasons" required>
           <el-input type="textarea" :row="3" laceholder="请输入休假原因" v-model="leaveForm.reasons" />
         </el-form-item>
+        <el-form-item label="文件上传">
+          <input type="file" @change="handleUpload">
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -117,6 +120,8 @@ import { reactive, ref, onMounted, getCurrentInstance, toRaw } from 'vue'
 import { ElMessage } from "element-plus";
 import api from '../api';
 import util from '../utils/util';
+import SparkMD5 from 'spark-md5';
+import { da } from 'element-plus/es/locales.mjs';
 // 这个ctx就是vue2的this
 // 获取Composition API 上下文对象
 const { ctx } = getCurrentInstance();
@@ -322,6 +327,123 @@ const handelDelete = (_id) => {
   } catch (error) {
 
   }
+}
+
+//大文件上传的实现
+const CHUNK_SIZE = 1024 * 1024
+const fileHash = ref('')
+const fileName = ref('')
+// 文件分片
+const createChunks = (file) => {
+  let cur = 0;
+  let chunks = []
+  while (cur < file.size) {
+    const blob = file.slice(cur, cur + CHUNK_SIZE)
+    chunks.push(blob)
+    cur = cur + CHUNK_SIZE
+  }
+  return chunks
+}
+
+const calculateHash = (chunks) => {
+  return new Promise(resolve => {
+    // 1.对每一个文件第一个和最后一个切片全部参与计算
+    // 2.中间的切片只计算前面两个字节、中间两个字节和最后两个字节
+    const targets = []
+    const spark = new SparkMD5.ArrayBuffer()
+    const fileReader = new FileReader()
+    chunks.forEach((chunk, index) => {
+      if (index === 0 || index === chunks.length - 1) {
+        targets.push(chunk)
+      } else {
+        targets.push(chunk.slice(0, 2))
+        targets.push(chunk.slice(CHUNK_SIZE / 2, CHUNK_SIZE / 2 + 2))
+        targets.push(chunk.slice(CHUNK_SIZE - 2, CHUNK_SIZE))
+      }
+    })
+    fileReader.readAsArrayBuffer(new Blob(targets))
+    fileReader.onload = (e) => {
+      // 将数据追加到 SparkMD5 实例中
+      spark.append(e.target.result)
+      // 计算并输出 MD5 哈希值
+      const md5Hash = spark.end();
+      resolve(md5Hash)
+    }
+  })
+}
+
+const uploadChunks = async (chunks, existChunks) => {
+  const data = chunks.map((chunk, index) => {
+    return {
+      fileHash: fileHash.value,
+      chunkHash: fileHash.value + '-' + index,
+      chunk
+    }
+  })
+  const formDatas = data.filter((item) => !existChunks.includes(item.chunkHash))
+    .map((item) => {
+      const formData = new FormData()
+      formData.append('fileHash', item.fileHash)
+      formData.append('chunkHash', item.chunkHash)
+      formData.append('chunk', item.chunk)
+      return formData
+    })
+  const max = 6
+  let index = 0
+  const taskPool = []
+
+  while (index < formDatas.length) {
+    // let params = { formDate: formDatas[index] }
+    const task = api.leaveUpload(formDatas[index])
+    task.then(() => {
+      taskPool.splice(taskPool.findIndex((item) => item === task))
+    })
+    taskPool.push(task)
+    if (taskPool.length === max) {
+      await Promise.race(taskPool)
+    }
+    index++
+  }
+  await Promise.all(taskPool)
+}
+
+const mergeRequest = async () => {
+  try {
+    const params =
+      { fileHash: fileHash.value, fileName: fileName.value, size: CHUNK_SIZE }
+    await api.leaveMerge(params)
+    ElMessage.success('合并成功')
+  } catch (error) {
+    ElMessage.error('合并失败')
+  }
+}
+const handleUpload = async (e) => {
+  // 1.读取文件
+  // console.log(e.target.files)
+  const files = e.target.files
+  if (!files) return
+  fileName.value = files[0].name
+  // 2.文件分片
+  const chunks = createChunks(files[0])
+  // console.log(chunks)
+
+  // 3.计算hash值
+  const hash = await calculateHash(chunks)
+  fileHash.value = hash
+  // console.log(hash)
+  let params = { fileHash: fileHash.value, fileName: fileName.value }
+  let { shouldUpload, existChunks } = await api.leaveVerify(params)
+  if (!shouldUpload) {
+    ElMessage.success('秒传成功')
+    return
+  } else {
+    // 4.文件分片上传
+    await uploadChunks(chunks, existChunks)
+
+    // 5.合并文件
+    await mergeRequest()
+  }
+
 }
 </script>
 
